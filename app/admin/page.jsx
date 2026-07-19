@@ -8,26 +8,54 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('dine-with-dane-user')
-    if (stored) {
-      const u = JSON.parse(stored)
-      if (u.role !== 'admin') {
+    // Support unified key (foodpanada-auth) and legacy keys (dine-with-dane-*)
+    try {
+      let auth = null
+      const saved = localStorage.getItem('foodpanada-auth')
+      if (saved) {
+        auth = JSON.parse(saved)
+      } else {
+        const legacyUser = localStorage.getItem('dine-with-dane-user')
+        const legacyToken = localStorage.getItem('dine-with-dane-token')
+        if (legacyUser) {
+          auth = { user: JSON.parse(legacyUser), token: legacyToken }
+        }
+      }
+
+      if (!auth || !auth.user) {
+        // Not logged in -> go to login
+        window.location.href = '/login'
+        return
+      }
+
+      const role = (auth.user.role || '').toString().toLowerCase()
+      if (role !== 'admin') {
         window.location.href = '/'
         return
       }
-      setUser(u)
-    } else {
-      window.location.href = '/login'
-      return
-    }
 
-    fetchStats()
+      setUser(auth.user)
+
+      // Fetch stats after we've set the user
+      fetchStats(auth.token)
+    } catch (e) {
+      // Parse error or other -> send to login
+      console.error('Admin auth parse error', e)
+      window.location.href = '/login'
+    }
   }, [])
 
-  const fetchStats = async () => {
+  const fetchStats = async (providedToken) => {
     try {
-      const token = localStorage.getItem('dine-with-dane-token')
-      const headers = { Authorization: `Bearer ${token}` }
+      const token = providedToken || (() => {
+        try {
+          const saved = localStorage.getItem('foodpanada-auth')
+          if (saved) return JSON.parse(saved).token
+          return localStorage.getItem('dine-with-dane-token')
+        } catch { return null }
+      })()
+
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
       const [ordersRes, menuRes] = await Promise.all([
         fetch('/api/orders', { headers }),
@@ -44,16 +72,20 @@ export default function AdminDashboard() {
         totalOrders: orders.length,
         totalRevenue: orders.reduce((s, o) => s + (o.totalPrice || 0), 0),
         totalItems: items.length,
-        pendingOrders: orders.filter(o => o.status === 'pending').length,
+        pendingOrders: orders.filter(o => o.status === 'pending' || o.status === 'Pending').length,
       })
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error('Failed to fetch admin stats', err)
     } finally {
       setLoading(false)
     }
   }
 
   const handleLogout = () => {
+    // Clear both unified and legacy keys
+    localStorage.removeItem('foodpanada-auth')
+    localStorage.removeItem('foodpanada-token')
+    localStorage.removeItem('foodpanada-user')
     localStorage.removeItem('dine-with-dane-token')
     localStorage.removeItem('dine-with-dane-user')
     window.location.href = '/'
