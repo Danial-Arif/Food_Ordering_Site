@@ -1,49 +1,46 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { BiPackage, BiDish, BiDollar, BiLogOut, BiMenu, BiListCheck } from 'react-icons/bi'
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [user, setUser] = useState(null)
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, totalItems: 0, pendingOrders: 0 })
   const [loading, setLoading] = useState(true)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
-    // Support unified key (foodpanada-auth) and legacy keys (dine-with-dane-*)
     try {
       let auth = null
       const saved = localStorage.getItem('foodpanada-auth')
-      if (saved) {
-        auth = JSON.parse(saved)
-      } else {
+      if (saved) auth = JSON.parse(saved)
+      else {
         const legacyUser = localStorage.getItem('dine-with-dane-user')
         const legacyToken = localStorage.getItem('dine-with-dane-token')
-        if (legacyUser) {
-          auth = { user: JSON.parse(legacyUser), token: legacyToken }
-        }
+        if (legacyUser) auth = { user: JSON.parse(legacyUser), token: legacyToken }
       }
 
       if (!auth || !auth.user) {
-        // Not logged in -> go to login
-        window.location.href = '/login'
+        router.replace('/login')
         return
       }
 
       const role = (auth.user.role || '').toString().toLowerCase()
       if (role !== 'admin') {
-        window.location.href = '/'
+        router.replace('/')
         return
       }
 
       setUser(auth.user)
-
-      // Fetch stats after we've set the user
       fetchStats(auth.token)
     } catch (e) {
-      // Parse error or other -> send to login
       console.error('Admin auth parse error', e)
-      window.location.href = '/login'
+      router.replace('/login')
+    } finally {
+      setCheckingAuth(false)
     }
-  }, [])
+  }, [router])
 
   const fetchStats = async (providedToken) => {
     try {
@@ -82,13 +79,12 @@ export default function AdminDashboard() {
   }
 
   const handleLogout = () => {
-    // Clear both unified and legacy keys
     localStorage.removeItem('foodpanada-auth')
     localStorage.removeItem('foodpanada-token')
     localStorage.removeItem('foodpanada-user')
     localStorage.removeItem('dine-with-dane-token')
     localStorage.removeItem('dine-with-dane-user')
-    window.location.href = '/'
+    router.replace('/')
   }
 
   const statCards = [
@@ -98,6 +94,7 @@ export default function AdminDashboard() {
     { label: 'Pending', value: stats.pendingOrders, icon: <BiListCheck size={20} />, color: 'var(--rose)' },
   ]
 
+  if (checkingAuth) return null
   if (!user) return null
 
   return (
@@ -206,3 +203,4 @@ export default function AdminDashboard() {
     </section>
   )
 }
+],
