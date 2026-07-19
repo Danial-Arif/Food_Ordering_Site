@@ -154,7 +154,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <a
-                  href="/profile"
+                  href="/"
                   className="hidden md:flex btn-secondary"
                   style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}
                 >
