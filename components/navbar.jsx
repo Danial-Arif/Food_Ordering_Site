@@ -1,6 +1,7 @@
 'use client'
+import { useState } from 'react'
 import { BiMenu, BiX, BiShoppingBag } from 'react-icons/bi'
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useCart } from './cart-provider'
 import CartDrawer from './cart-drawer'
 
@@ -16,6 +17,27 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const menuRef = useRef(null)
   const { totalItems, setIsOpen: setCartOpen } = useCart()
+
+  // Auth/user state
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('foodpanada-auth')
+      if (saved) {
+        const auth = JSON.parse(saved)
+        setUser(auth.user || null)
+        return
+      }
+      const token = localStorage.getItem('foodpanada-token')
+      const userRaw = localStorage.getItem('foodpanada-user')
+      if (token && userRaw) setUser(JSON.parse(userRaw))
+      else setUser(null)
+    } catch (e) {
+      console.warn('Navbar: invalid auth data', e)
+      setUser(null)
+    }
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
@@ -37,6 +59,17 @@ export default function Navbar() {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
+
+  const signOut = () => {
+    localStorage.removeItem('foodpanada-auth')
+    localStorage.removeItem('foodpanada-token')
+    localStorage.removeItem('foodpanada-user')
+    // If you use server sessions, you may also call an API logout endpoint here.
+    window.location.href = '/login'
+  }
+
+  const role = (user?.role || '').toString().toLowerCase()
+  const displayName = (user?.name || user?.email || 'Account')
 
   return (
     <>
@@ -89,6 +122,19 @@ export default function Navbar() {
                 />
               </a>
             ))}
+
+            {/* Admin link for admins */}
+            {role === 'admin' && (
+              <a
+                href="/admin"
+                className="relative group"
+                style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                Admin
+              </a>
+            )}
           </div>
 
           {/* Right Actions */}
@@ -104,13 +150,33 @@ export default function Navbar() {
               )}
             </button>
 
-            <a
-              href="/login"
-              className="hidden md:flex btn-secondary"
-              style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}
-            >
-              Sign In
-            </a>
+            {/* If logged in show name & sign out, else show Sign In */}
+            {user ? (
+              <>
+                <a
+                  href="/profile"
+                  className="hidden md:flex btn-secondary"
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}
+                >
+                  {displayName}
+                </a>
+                <button
+                  onClick={signOut}
+                  className="hidden md:flex btn-secondary"
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <a
+                href="/login"
+                className="hidden md:flex btn-secondary"
+                style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}
+              >
+                Sign In
+              </a>
+            )}
 
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -150,14 +216,25 @@ export default function Navbar() {
               </a>
             ))}
             <div className="divider" style={{ width: '4rem', margin: '0.5rem 0' }} />
-            <a
-              href="/login"
-              onClick={() => setMenuOpen(false)}
-              className="btn-primary animate-fade-up"
-              style={{ animationDelay: '500ms' }}
-            >
-              Sign In
-            </a>
+
+            {/* mobile auth actions */}
+            {user ? (
+              <>
+                {role === 'admin' && (
+                  <a href="/admin" onClick={() => setMenuOpen(false)} className="btn-primary animate-fade-up" style={{ animationDelay: '400ms' }}>Admin</a>
+                )}
+                <button onClick={() => { setMenuOpen(false); signOut(); }} className="btn-primary animate-fade-up" style={{ animationDelay: '500ms' }}>Sign Out</button>
+              </>
+            ) : (
+              <a
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="btn-primary animate-fade-up"
+                style={{ animationDelay: '500ms' }}
+              >
+                Sign In
+              </a>
+            )}
           </nav>
 
           <div

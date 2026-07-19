@@ -1,12 +1,30 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/navbar'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // If already logged in, redirect away from login page
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('foodpanada-auth') || localStorage.getItem('foodpanada-user')
+      if (stored) {
+        // If older keys exist, prefer unified 'foodpanada-auth'
+        const auth = localStorage.getItem('foodpanada-auth')
+          ? JSON.parse(localStorage.getItem('foodpanada-auth'))
+          : { token: localStorage.getItem('foodpanada-token'), user: JSON.parse(localStorage.getItem('foodpanada-user') || 'null') }
+        const role = (auth?.user?.role || '').toString().toLowerCase()
+        if (role === 'admin') router.replace('/admin')
+        else router.replace('/menu')
+      }
+    } catch (e) { /* ignore parse errors */ }
+  }, [router])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,22 +40,36 @@ export default function LoginPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Login failed')
+        setError(data.error || data.message || 'Login failed')
         return
       }
 
-      // Store token and user data
-      localStorage.setItem('foodpanada-token', data.token)
-      localStorage.setItem('foodpanada-user', JSON.stringify(data.user))
+      // Expected: { token, user }
+      const token = data.token || ''
+      const user = data.user || null
 
-      // Redirect based on role
-      if (data.user.role === 'admin') {
-        window.location.href = '/admin'
-      } else {
-        window.location.href = '/menu'
+      if (!token || !user) {
+        setError('Unexpected login response from server')
+        return
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+
+      // Persist unified auth object (so other components can read one key)
+      const authObj = { token, user, createdAt: Date.now() }
+      localStorage.setItem('foodpanada-auth', JSON.stringify(authObj))
+      // Backwards compat (if other parts of app still read these)
+      localStorage.setItem('foodpanada-token', token)
+      localStorage.setItem('foodpanada-user', JSON.stringify(user))
+
+      // Redirect based on role (case-insensitive)
+      const role = (user.role || '').toString().toLowerCase()
+      if (role === 'admin') {
+        router.replace('/admin')
+      } else {
+        router.replace('/menu')
+      }
+    } catch (err) {
+      console.error('Login error', err)
+      setError('Network error — please try again')
     } finally {
       setLoading(false)
     }
