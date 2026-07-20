@@ -1,31 +1,50 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { BiPlus, BiEdit, BiTrash, BiX, BiArrowBack, BiCloudUpload, BiLoaderAlt } from 'react-icons/bi'
 
+const AUTH_KEY = 'foodpanada-auth'
 const categories = ['starters', 'mains', 'desserts', 'drinks']
 
 export default function AdminMenuPage() {
+  const router = useRouter()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isAuthed, setIsAuthed] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [form, setForm] = useState({ name: '', description: '', price: '', category: 'starters', image: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
-
-  const token = typeof window !== 'undefined' ? localStorage.getItem('dine-with-dane-token') : ''
+  const [token, setToken] = useState('')
 
   useEffect(() => {
-    // Check admin
-    const stored = localStorage.getItem('dine-with-dane-user')
-    if (stored) {
-      const u = JSON.parse(stored)
-      if (u.role !== 'admin') { window.location.href = '/'; return }
-    } else {
-      window.location.href = '/login'; return
+    // Check auth on mount only
+    const authData = localStorage.getItem(AUTH_KEY)
+
+    if (!authData) {
+      router.push('/login')
+      return
     }
-    fetchItems()
+
+    try {
+      const auth = JSON.parse(authData)
+      const userData = auth.user
+
+      if (!userData || userData.role !== 'admin') {
+        router.push('/')
+        return
+      }
+
+      setToken(auth.token)
+      setIsAuthed(true)
+      fetchItems()
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      localStorage.removeItem(AUTH_KEY)
+      router.push('/login')
+    }
   }, [])
 
   const fetchItems = async () => {
@@ -33,8 +52,11 @@ export default function AdminMenuPage() {
       const res = await fetch('/api/menu')
       const data = await res.json()
       setItems(data.items || [])
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+    } catch (error) {
+      console.error('Failed to fetch items:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const openAdd = () => {
@@ -113,7 +135,8 @@ export default function AdminMenuPage() {
 
       setShowModal(false)
       fetchItems()
-    } catch {
+    } catch (err) {
+      console.error('Save error:', err)
       setError('Failed to save item')
     } finally {
       setSaving(false)
@@ -128,8 +151,12 @@ export default function AdminMenuPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       fetchItems()
-    } catch { /* ignore */ }
+    } catch (error) {
+      console.error('Delete error:', error)
+    }
   }
+
+  if (!isAuthed) return null
 
   return (
     <section className="page-wrapper">
@@ -139,16 +166,16 @@ export default function AdminMenuPage() {
       >
         <div className="content-container flex items-center justify-between">
           <div className="flex items-center gap-4">
-          <a href="/admin" className="btn-icon" style={{ textDecoration: 'none', width: '2.5rem', height: '2.5rem' }}>
-            <BiArrowBack size={18} />
-          </a>
-          <span className="heading-display text-lg" style={{ color: 'var(--text-primary)' }}>
-            Menu Management
-          </span>
-        </div>
-        <button onClick={openAdd} className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem 1.25rem' }}>
-          <BiPlus size={16} /> Add Item
-        </button>
+            <a href="/admin" className="btn-icon" style={{ textDecoration: 'none', width: '2.5rem', height: '2.5rem' }}>
+              <BiArrowBack size={18} />
+            </a>
+            <span className="heading-display text-lg" style={{ color: 'var(--text-primary)' }}>
+              Menu Management
+            </span>
+          </div>
+          <button onClick={openAdd} className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem 1.25rem' }}>
+            <BiPlus size={16} /> Add Item
+          </button>
         </div>
       </header>
 
@@ -200,10 +227,10 @@ export default function AdminMenuPage() {
                     <td className="px-4 py-4" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
                       <span className="badge" style={{ fontSize: '0.55rem' }}>{item.category}</span>
                     </td>
-                    <td className="px-4 py-4" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)', color: 'var(--accent)', fontSize: '0.9rem', fontWeight: 600 }}>
+                    <td className="px-4 py-4" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)', color: 'var(--accent)' }}>
                       Rs. {item.price.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                    <td className="px-4 py-4" style={{ background: 'var(--glass-bg)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
                       ⭐ {item.averageRating || 0} ({item.reviewCount || 0})
                     </td>
                     <td className="px-4 py-4 rounded-r-xl" style={{ background: 'var(--glass-bg)', borderRight: '1px solid var(--glass-border)', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
