@@ -132,7 +132,7 @@ export default function Navbar() {
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
               >
-                Admin
+                Dashboard
               </a>
             )}
           </div>
