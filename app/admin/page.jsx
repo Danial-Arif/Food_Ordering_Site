@@ -1,48 +1,48 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { BiPackage, BiDish, BiDollar, BiLogOut, BiMenu, BiListCheck } from 'react-icons/bi'
 import { useRouter } from 'next/navigation'
+import { BiPackage, BiDish, BiDollar, BiLogOut, BiMenu, BiListCheck } from 'react-icons/bi'
+
+const AUTH_KEY = 'foodpanada-auth'
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [authChecked, setAuthChecked] = useState(false)
+  const [isAuthed, setIsAuthed] = useState(false)
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, totalItems: 0, pendingOrders: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const stored = localStorage.getItem('dine-with-dane-user')
-        
-        if (!stored) {
-          router.push('/login')
-          return
-        }
-
-        const u = JSON.parse(stored)
-        
-        if (u.role !== 'admin') {
-          router.push('/')
-          return
-        }
-
-        setUser(u)
-        setAuthChecked(true)
-        fetchStats()
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        router.push('/login')
-      }
+    // Only check auth on mount, not on router changes
+    const authData = localStorage.getItem(AUTH_KEY)
+    
+    if (!authData) {
+      router.push('/login')
+      return
     }
 
-    checkAuth()
-  }, [router])
-
-  const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('dine-with-dane-token')
-      const headers = { Authorization: `Bearer ${token}` }
+      const auth = JSON.parse(authData)
+      const userData = auth.user
+
+      if (!userData || userData.role !== 'admin') {
+        router.push('/')
+        return
+      }
+
+      setUser(userData)
+      setIsAuthed(true)
+      fetchStats(auth.token)
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      localStorage.removeItem(AUTH_KEY)
+      router.push('/login')
+    }
+  }, [])
+
+  const fetchStats = async (token) => {
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
       const [ordersRes, menuRes] = await Promise.all([
         fetch('/api/orders', { headers }),
@@ -61,16 +61,17 @@ export default function AdminDashboard() {
         totalItems: items.length,
         pendingOrders: orders.filter(o => o.status === 'pending').length,
       })
-    } catch {
-      /* ignore */
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('dine-with-dane-token')
-    localStorage.removeItem('dine-with-dane-user')
+    localStorage.removeItem(AUTH_KEY)
+    localStorage.removeItem('foodpanada-token')
+    localStorage.removeItem('foodpanada-user')
     router.push('/')
   }
 
@@ -81,8 +82,7 @@ export default function AdminDashboard() {
     { label: 'Pending', value: stats.pendingOrders, icon: <BiListCheck size={20} />, color: 'var(--rose)' },
   ]
 
-  // Show nothing until auth is checked and user is verified
-  if (!authChecked || !user) return null
+  if (!isAuthed || !user) return null
 
   return (
     <section className="page-wrapper">
