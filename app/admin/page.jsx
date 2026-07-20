@@ -4,24 +4,32 @@ import { BiPackage, BiDish, BiDollar, BiLogOut, BiMenu, BiListCheck } from 'reac
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null)
+  const [isChecking, setIsChecking] = useState(true)
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, totalItems: 0, pendingOrders: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('dine-with-dane-user')
-    if (stored) {
+    const checkAuth = () => {
+      const stored = localStorage.getItem('dine-with-dane-user')
+      
+      if (!stored) {
+        window.location.href = '/login'
+        return
+      }
+
       const u = JSON.parse(stored)
+      
       if (u.role !== 'admin') {
         window.location.href = '/'
         return
       }
+
       setUser(u)
-    } else {
-      window.location.href = '/login'
-      return
+      setIsChecking(false)
+      fetchStats()
     }
 
-    fetchStats()
+    checkAuth()
   }, [])
 
   const fetchStats = async () => {
@@ -66,7 +74,8 @@ export default function AdminDashboard() {
     { label: 'Pending', value: stats.pendingOrders, icon: <BiListCheck size={20} />, color: 'var(--rose)' },
   ]
 
-  if (!user) return null
+  // Show nothing while checking authentication
+  if (isChecking || !user) return null
 
   return (
     <section className="page-wrapper">
