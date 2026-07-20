@@ -177,8 +177,8 @@ export default function Home() {
             {/* Brand */}
             <div>
               <div className="heading-display text-2xl" style={{ marginBottom: '1rem' }}>
-                <span style={{ color: 'var(--text-primary)' }}>food</span>
-                <span style={{ color: 'var(--accent)' }}>panada</span>
+                <span style={{ color: 'var(--text-primary)' }}>DineWith</span>
+                <span style={{ color: 'var(--accent)' }}>Dane</span>
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.7, maxWidth: '20rem' }}>
                 Where every meal becomes a memory. Seasonal ingredients,
@@ -216,8 +216,8 @@ export default function Home() {
                 Contact
               </span>
               <div className="flex flex-col" style={{ gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                <span>Lahore, Pakistan</span>
-                <span>hello@foodpanada.com</span>
+                <span>Islamabad, Pakistan</span>
+                <span>hello@dinewithdane.com</span>
                 <span>+92 300 1234567</span>
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row justify-between items-center" style={{ gap: '1rem' }}>
             <span className="label-mono" style={{ fontSize: '0.6rem' }}>
-              © 2024 FoodPanada. All rights reserved.
+              © 2024 DineWithDane. All rights reserved.
             </span>
             <span className="label-mono" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
               Crafted with passion
