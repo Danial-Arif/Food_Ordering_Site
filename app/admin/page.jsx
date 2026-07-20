@@ -1,36 +1,43 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { BiPackage, BiDish, BiDollar, BiLogOut, BiMenu, BiListCheck } from 'react-icons/bi'
+import { useRouter } from 'next/navigation'
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [user, setUser] = useState(null)
-  const [isChecking, setIsChecking] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, totalItems: 0, pendingOrders: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAuth = () => {
-      const stored = localStorage.getItem('dine-with-dane-user')
-      
-      if (!stored) {
-        window.location.href = '/login'
-        return
-      }
+    const checkAuth = async () => {
+      try {
+        const stored = localStorage.getItem('dine-with-dane-user')
+        
+        if (!stored) {
+          router.push('/login')
+          return
+        }
 
-      const u = JSON.parse(stored)
-      
-      if (u.role !== 'admin') {
-        window.location.href = '/'
-        return
-      }
+        const u = JSON.parse(stored)
+        
+        if (u.role !== 'admin') {
+          router.push('/')
+          return
+        }
 
-      setUser(u)
-      setIsChecking(false)
-      fetchStats()
+        setUser(u)
+        setAuthChecked(true)
+        fetchStats()
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        router.push('/login')
+      }
     }
 
     checkAuth()
-  }, [])
+  }, [router])
 
   const fetchStats = async () => {
     try {
@@ -64,7 +71,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('dine-with-dane-token')
     localStorage.removeItem('dine-with-dane-user')
-    window.location.href = '/'
+    router.push('/')
   }
 
   const statCards = [
@@ -74,8 +81,8 @@ export default function AdminDashboard() {
     { label: 'Pending', value: stats.pendingOrders, icon: <BiListCheck size={20} />, color: 'var(--rose)' },
   ]
 
-  // Show nothing while checking authentication
-  if (isChecking || !user) return null
+  // Show nothing until auth is checked and user is verified
+  if (!authChecked || !user) return null
 
   return (
     <section className="page-wrapper">
