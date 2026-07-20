@@ -83,7 +83,7 @@ export default function About() {
           {/* Right — Story Text */}
           <div className="flex flex-col justify-center" style={{ gap: '1.75rem' }}>
             <p className="body-text reveal-item" style={{ opacity: 0 }}>
-              Founded in 2024, FoodPanada was born from a singular vision: to deliver
+              Founded in 2024, DineWithDane was born from a singular vision: to deliver
               exceptional dining experiences without the pretense. We believe that true
               quality speaks for itself — through the careful sourcing of ingredients
               and the meticulous preparation of every dish.
