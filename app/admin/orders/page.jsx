@@ -1,42 +1,65 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { BiArrowBack, BiPackage } from 'react-icons/bi'
 
+const AUTH_KEY = 'foodpanada-auth'
 const statusOptions = ['pending', 'preparing', 'delivered', 'cancelled']
 
 export default function AdminOrdersPage() {
+  const router = useRouter()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isAuthed, setIsAuthed] = useState(false)
   const [filter, setFilter] = useState('all')
   const [updating, setUpdating] = useState(null)
+  const [token, setToken] = useState('')
 
   useEffect(() => {
-    const stored = localStorage.getItem('dine-with-dane-user')
-    if (stored) {
-      const u = JSON.parse(stored)
-      if (u.role !== 'admin') { window.location.href = '/'; return }
-    } else {
-      window.location.href = '/login'; return
+    // Check auth on mount only
+    const authData = localStorage.getItem(AUTH_KEY)
+
+    if (!authData) {
+      router.push('/login')
+      return
     }
-    fetchOrders()
+
+    try {
+      const auth = JSON.parse(authData)
+      const userData = auth.user
+
+      if (!userData || userData.role !== 'admin') {
+        router.push('/')
+        return
+      }
+
+      setToken(auth.token)
+      setIsAuthed(true)
+      fetchOrders(auth.token)
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      localStorage.removeItem(AUTH_KEY)
+      router.push('/login')
+    }
   }, [])
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (authToken) => {
     try {
-      const token = localStorage.getItem('dine-with-dane-token')
       const res = await fetch('/api/orders', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       })
       const data = await res.json()
       setOrders(data.orders || [])
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+    } catch (error) {
+      console.error('Failed to fetch orders:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const updateStatus = async (orderId, newStatus) => {
     setUpdating(orderId)
     try {
-      const token = localStorage.getItem('dine-with-dane-token')
       await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
@@ -45,9 +68,12 @@ export default function AdminOrdersPage() {
         },
         body: JSON.stringify({ status: newStatus }),
       })
-      fetchOrders()
-    } catch { /* ignore */ }
-    finally { setUpdating(null) }
+      fetchOrders(token)
+    } catch (error) {
+      console.error('Failed to update order:', error)
+    } finally {
+      setUpdating(null)
+    }
   }
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
@@ -61,6 +87,8 @@ export default function AdminOrdersPage() {
     }
     return map[status] || ''
   }
+
+  if (!isAuthed) return null
 
   return (
     <section style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
