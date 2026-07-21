@@ -1,5 +1,7 @@
 <p align="center">
-  <strong style="font-size:2rem;">dine with <span>dane</span></strong>
+  <strong style="font-size: 2rem; text-transform: uppercase;">
+    DINE WITH <span style="color: #B8860B;">DANE</span>
+  </strong>
 </p>
 
 <h3 align="center">🍽️ Where Every Meal Becomes a Memory</h3>
